@@ -150,9 +150,11 @@ def main(identity_bool=False):
 ###############################################################################
 if __name__ == "__main__":
     # Supervised run hyperparameters
+    with open("hyperparameters/hps.yaml", "r") as file:
+        hp = yaml.safe_load(file)
     identity_bool = True  # ...select whether to train against the identity function metric (True) or round metric (False)
     save = True  # ...whether to save the trained supervised model
-    save_flag = "test"  # ...the filename extension for the trained supervised model
+    save_flag = hp["save_flag"]  # ...the filename extension for the trained supervised model
 
     # Define and train the model
     network, lh, train_coords, train_metrics, val_data = main(identity_bool)
@@ -160,4 +162,5 @@ if __name__ == "__main__":
 
     # Save the model
     if save == True:
-        network.save(f"runs/supervised_model_{save_flag}.keras")
+        print(f"[DEBUG] Will save to: runs_supervised/supervised_model_{save_flag}.keras")
+        network.save(f"runs_supervised/supervised_model_{save_flag}.keras")

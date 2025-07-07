@@ -19,7 +19,7 @@ from keras.saving import register_keras_serializable
 class BasePatchSubmodel(tf.keras.Model):
     """
     Represents a class for the neural network model which represents the metric
-    function in a patch, these are trained across the patches to satify the Einstein equation.
+    function in a patch, these are trained across the patches to satisfy the Einstein equation.
     Inherits from the tf.keras.Model class.
 
     Attributes:
@@ -64,6 +64,10 @@ class BasePatchSubmodel(tf.keras.Model):
         self.n_hidden = self.hp["n_hidden"]
         self.activations = self.hp["activations"]
         self.use_bias = self.hp["use_bias"]
+        
+        # Initialization strategy and noise level
+        self.init_metric_type = self.hp.get("init_metric_type", "round")
+        self.init_noise_std = self.hp.get("init_noise_std", 0.05)
 
         # Define subnetwork architecture
         inputs = tfk.layers.Input(shape=(self.dim,), dtype=tf.float64)
@@ -74,9 +78,11 @@ class BasePatchSubmodel(tf.keras.Model):
             x = tfk.layers.Dense(
                 self.n_hidden, activation=self.activations, use_bias=self.use_bias
             )(x)
-        outputs = tfk.layers.Dense(n_out, activation=None, use_bias=False)(x)
+        outputs = tfk.layers.Dense(n_out, activation=None, use_bias=True)(x)
 
         self.submodel = tfk.Model(inputs=inputs, outputs=outputs)
+        self._initialize_final_layer()
+
 
     def call(self, inputs):
         return self.submodel(inputs)
@@ -102,7 +108,92 @@ class BasePatchSubmodel(tf.keras.Model):
     @classmethod
     def from_config(cls, config):
         return cls(**config)
+        
+    def _initialize_final_layer(self):
+        final_layer = self.submodel.layers[-1]
+        if not isinstance(final_layer, tf.keras.layers.Dense) or final_layer.bias is None:
+            return
 
+        dim = self.dim
+        cholesky_dim = final_layer.units
+
+        # Generate coordinates to evaluate spatially dependent initializations
+        num_samples = 128
+        coords = tf.random.uniform((num_samples, dim), minval=-1.0, maxval=1.0, dtype=tf.float64)
+
+        # Identity + noise
+        def round_cholesky():
+            L = np.zeros(cholesky_dim)
+            diag_indices = []
+            index = 0
+            for i in range(dim):
+                diag_indices.append(index)
+                index += (i + 1)
+            for idx in diag_indices:
+                if idx < cholesky_dim:
+                    L[idx] = 1.0
+            return L
+            
+        if self.init_metric_type == "round":
+            bias_init = np.zeros(cholesky_dim)
+            index = 0
+            for i in range(dim):
+                bias_init[index] = 1.0
+                index += (i + 1)
+        elif self.init_metric_type == "round_noise":
+            bias_init = round_cholesky()
+            bias_init += np.random.normal(0, self.init_noise_std, size=cholesky_dim)
+
+        elif self.init_metric_type == "conformal_bump":
+            center = tf.constant([0.0] * (dim - 1) + [-1.0], dtype=tf.float64)  # near south pole
+            sigma = self.hp.get("bump_sigma", 0.3)
+            A = self.hp.get("bump_amplitude", 0.3)
+
+            def conformal_scalar(x):
+                d2 = tf.reduce_sum((x - center) ** 2, axis=-1)
+                return A * tf.exp(-d2 / sigma**2)
+
+            f = conformal_scalar(coords)
+            scale = tf.reduce_mean(tf.exp(f))  # scalar avg across sample
+            diag_scale = float(scale)
+
+            bias_init = np.zeros(cholesky_dim)
+            index = 0
+            for i in range(dim):
+                bias_init[index] = diag_scale
+                index += (i + 1)
+
+
+        elif self.init_metric_type == "asymmetric_hemisphere":
+            # Scale = 1 on z > 0, scale = λ on z < 0 (smooth transition)
+            z_coords = coords[:, -1]
+            scale = 1.0 + 0.1 * tf.tanh(-10 * z_coords)
+            diag_scale = float(tf.reduce_mean(scale))
+
+            bias_init = np.zeros(cholesky_dim)
+            index = 0
+            for i in range(dim):
+                bias_init[index] = diag_scale
+                index += (i + 1)
+
+        elif self.init_metric_type == "squashed_sphere":
+            # Only well-defined for dim = 3 for now
+            if dim != 3:
+                raise ValueError("squashed_sphere initialization only implemented for dim = 3.")
+            # Scale first direction (fiber) down
+            bias_init = np.zeros(cholesky_dim)
+            bias_init[0] = 0.5   # L_00: squashed direction
+            bias_init[1] = 0.0   # L_10
+            bias_init[2] = 1.0   # L_11
+            bias_init[3] = 0.0   # L_20
+            bias_init[4] = 0.0   # L_21
+            bias_init[5] = 1.0   # L_22
+
+        else:
+            raise ValueError(f"Unknown init_metric_type: {self.init_metric_type}")
+
+        final_layer.bias.assign(bias_init.astype(np.float64))
+        print("Bias after assignment:", final_layer.bias.numpy()[:dim*(dim+1)//2])
 
 @register_keras_serializable()
 class BaseGlobalModel(tf.keras.Model):
