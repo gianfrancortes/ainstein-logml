@@ -17,12 +17,12 @@ wandb disabled
 python3 run.py --hyperparams=hyperparameters/hps.yaml
 ```
 
-## Functionality
+### Functionality
 The package functionality is split according to: the model in `network/`, the losses in `losses/`, the sampling in `sampling/`, the geometric functions in `geometry/`, and some additional useful functions in `helper_functions/helper_functions.py`. The models are saved into the `runs/` folder (the local filepath to this must first be set in `hps.yaml`), whilst the `runs_supervised/` folder contains the pre-trained supervised models used as initialisations for the published results; more supervised models can be trained and moved to this folder for different architecures and experiments.
 
 A jupyter notebook `examine_output.ipynb` is provided which provides the testing functionality, and allows interactive visualisation of the trained models. Ensure the local filepath to the trained models is set correctly and follow internal instructions to set up the testing.   
   
-## BibTeX Citation  
+### BibTeX Citation  
 ``` 
 @article{Hirst:2025seh,
     author = "Hirst, Edward and Gherardini, Tancredi Schettini and Stapleton, Alexander G.",
