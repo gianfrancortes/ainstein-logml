@@ -7,7 +7,7 @@
 ###############################################################################
 # Geometric set-up
 # Dimensionality of the data (e.g., 2 for 2D data)
-dim: 2 
+dim: 3
 
 # Set the number of patches (current functionality for 1 or 2)
 n_patches: 2 
@@ -37,14 +37,18 @@ density_power: 4.
 num_samples: 10000
 
 # choose from 'round', 'round_noise', 'conformal_bump', 'asymmetric_hemisphere', 'squashed_sphere'
-init_metric_type: round
+init_metric_type: squashed_sphere
 
 # only for round_noise tuning
-# init_noise_std: 0.1
+# init_noise_std: 0.01
 
 # only for conformal_bump tuning
 # bump_sigma: 0.5
 # bump_amplitude: 0.1
+
+# only for asymmetric_hemisphere tuning
+asym_amp: 0.3
+asym_slope: 20.0
 
 ###############################################################################
 # Loss set-up
@@ -69,8 +73,8 @@ finite_slope: 0.2
 # Model set-up
 # Import a saved model instead of initiating a new one (null means randomly initialise)
 saved_model: true
-save_flag: round_noise_0.1
-saved_model_path: runs_supervised/round_noise_0.1.keras
+save_flag: squashed_sphere
+saved_model_path: runs_supervised/supervised_model_squashed_sphere.keras
 # ...the below are ignored if `saved_model` is true and a model is imported
 
 # Number of hidden units in each layer

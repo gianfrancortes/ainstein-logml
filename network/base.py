@@ -145,29 +145,33 @@ class BasePatchSubmodel(tf.keras.Model):
             bias_init += np.random.normal(0, self.init_noise_std, size=cholesky_dim)
 
         elif self.init_metric_type == "conformal_bump":
-            center = tf.constant([0.0] * (dim - 1) + [-1.0], dtype=tf.float64)  # near south pole
-            sigma = self.hp.get("bump_sigma", 0.3)
-            A = self.hp.get("bump_amplitude", 0.3)
+                    center = tf.constant([0.0] * (dim - 1) + [-1.0], dtype=tf.float64)  # near south pole
+                    sigma = self.hp.get("bump_sigma", 0.3)
+                    A = self.hp.get("bump_amplitude", 0.3)
 
-            def conformal_scalar(x):
-                d2 = tf.reduce_sum((x - center) ** 2, axis=-1)
-                return A * tf.exp(-d2 / sigma**2)
+                    def conformal_scalar(x):
+                        d2 = tf.reduce_sum((x - center) ** 2, axis=-1)
+                        return A * tf.exp(-d2 / sigma**2)
 
-            f = conformal_scalar(coords)
-            scale = tf.reduce_mean(tf.exp(f))  # scalar avg across sample
-            diag_scale = float(scale)
+                    f = conformal_scalar(coords)
+                    scale = tf.reduce_mean(tf.exp(f))  # scalar avg across sample
+                    diag_scale = float(scale)
 
-            bias_init = np.zeros(cholesky_dim)
-            index = 0
-            for i in range(dim):
-                bias_init[index] = diag_scale
-                index += (i + 1)
+                    bias_init = np.zeros(cholesky_dim)
+                    index = 0
+                    for i in range(dim):
+                        bias_init[index] = diag_scale
+                        index += (i + 1)
 
 
         elif self.init_metric_type == "asymmetric_hemisphere":
-            # Scale = 1 on z > 0, scale = λ on z < 0 (smooth transition)
+            # Scale smoothly from 1 + amp at z → -∞ to 1 – amp at z → ∞
+            amp = getattr(self, "asym_amp", 0.1)     # default 0.1 if not defined
+            slope = getattr(self, "asym_slope", 10)  # default 10 if not defined
+
             z_coords = coords[:, -1]
-            scale = 1.0 + 0.1 * tf.tanh(-10 * z_coords)
+            scale = 1.0 + amp * tf.tanh(-slope * z_coords)  # smooth transition
+
             diag_scale = float(tf.reduce_mean(scale))
 
             bias_init = np.zeros(cholesky_dim)
@@ -180,7 +184,7 @@ class BasePatchSubmodel(tf.keras.Model):
             # Only well-defined for dim = 3 for now
             if dim != 3:
                 raise ValueError("squashed_sphere initialization only implemented for dim = 3.")
-            # Scale first direction (fiber) down
+                # Scale first direction (fiber) down
             bias_init = np.zeros(cholesky_dim)
             bias_init[0] = 0.5   # L_00: squashed direction
             bias_init[1] = 0.0   # L_10
