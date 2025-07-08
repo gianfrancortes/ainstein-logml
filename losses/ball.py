@@ -1,3 +1,5 @@
+import time
+
 import tensorflow as tf
 
 tf.keras.backend.set_floatx("float64")
@@ -300,8 +302,8 @@ class OverlapLossBall:
 
     def compute(self, x_vals, metric_preds):
         # Convert the outputs to metrics
-        patch_1_metric_pred = tf.map_fn(cholesky_from_vec, metric_preds[0])
-        patch_2_metric_pred = tf.map_fn(cholesky_from_vec, metric_preds[1])
+        patch_1_metric_pred = cholesky_from_vec(metric_preds[0])
+        patch_2_metric_pred = cholesky_from_vec(metric_preds[1])
 
         # Compute the patch changes of the both outputs
         patch_2_metrics_from_patch_1 = PatchChange_Metric_Ball(
