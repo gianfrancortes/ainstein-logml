@@ -44,6 +44,9 @@ class TotalBallLoss:
         self.n_patches = self.hp["n_patches"]
         self.overlap_upperwidth = self.hp["overlap_upperwidth"]
         self.print_losses = print_losses
+        self.print_interval = self.hp["print_interval"]
+
+        self.step_count = 0
 
         # Einstein constant, $\lambda$ in the Einstein equation: $R_{ij} = \lambda g_{ij}$
         self.einstein_constant = self.hp["einstein_constant"]
@@ -162,7 +165,7 @@ class TotalBallLoss:
             ]
 
         # Print the batch loss values
-        if self.print_losses and val_print:
+        if self.print_losses and (self.step_count + 1) % self.print_interval == 0:
             print(
                 f"Einstein: {[tf.get_static_value(e_loss) for e_loss in e_losses]}\nOverlap: {tf.get_static_value(overlap_loss)}\nFinite: {[tf.get_static_value(f_loss) for f_loss in f_losses]}\n"
             )
@@ -199,6 +202,7 @@ class TotalBallLoss:
             + self.finiteness_multiplier
         )
 
+        self.step_count += 1
         return total_loss, loss_constituents
 
 
