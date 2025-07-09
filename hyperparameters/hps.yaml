@@ -18,7 +18,7 @@ einstein_constant: 1.0
 # Patching size
 # ...determines the distance from the radial midpoint to the outer edge of the 
 # overlap region within the ball patches
-overlap_upperwidth: 0.1 
+overlap_upperwidth: 0.291
 
 ###############################################################################
 # Data set-up
@@ -81,7 +81,7 @@ tf_seed: null
 ###############################################################################
 # Training set-up
 # Number of training epochs
-epochs: 100
+epochs: 50
 
 # Batch size for training
 batch_size: 100
@@ -118,7 +118,7 @@ log_interval: null
 track_best: true
 # Save the historical best losses? Setting to false overwrites the previous
 # best loss for the run
-save_best_hist: false
+save_best_hist: true
 # Log batches and model when numerical errors occur?
 log_errors: true
 
